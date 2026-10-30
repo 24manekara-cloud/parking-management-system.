@@ -1,0 +1,8 @@
+.git
+.mvn
+target/classes
+target/test-classes
+target/generated-sources
+target/maven-status
+*.md
+SmartParking.postman_collection.json

@@ -1,0 +1,253 @@
+{
+  "info": {
+    "name": "Smart Parking Management System",
+    "description": "Complete Postman collection for all Smart Parking Management System API endpoints.\n\nBase URL: http://localhost:8080\n\nFee Policy: ₹50 per 3 hours or fraction thereof.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "parking-system-v1"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "bookingId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Parking Slots",
+      "item": [
+        {
+          "name": "Get All Slots",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/slots",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "slots"]
+            },
+            "description": "Returns all parking slots (AVAILABLE and OCCUPIED)."
+          },
+          "response": [
+            {
+              "name": "200 OK - All Slots",
+              "status": "OK",
+              "code": 200,
+              "body": "[\n  { \"id\": 1, \"slotNumber\": \"A-01\", \"status\": \"AVAILABLE\" },\n  { \"id\": 2, \"slotNumber\": \"A-02\", \"status\": \"OCCUPIED\" }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Get Available Slots",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/slots/available",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "slots", "available"]
+            },
+            "description": "Returns only slots with AVAILABLE status."
+          },
+          "response": [
+            {
+              "name": "200 OK - Available Slots",
+              "status": "OK",
+              "code": 200,
+              "body": "[\n  { \"id\": 1, \"slotNumber\": \"A-01\", \"status\": \"AVAILABLE\" },\n  { \"id\": 3, \"slotNumber\": \"A-03\", \"status\": \"AVAILABLE\" }\n]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Create Booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('bookingId', jsonData.bookingId);",
+                  "    pm.test('Booking created successfully', () => pm.response.to.have.status(201));",
+                  "    pm.test('Payment status is PENDING', () => pm.expect(jsonData.paymentStatus).to.eql('PENDING'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleNumber\": \"MH31AB1234\",\n  \"slotId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings"]
+            },
+            "description": "Creates a new parking booking. Vehicle number must follow Indian format (e.g. MH31AB1234)."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"bookingId\": 1,\n  \"vehicleNumber\": \"MH31AB1234\",\n  \"slotId\": 1,\n  \"slotNumber\": \"A-01\",\n  \"entryTime\": \"2026-10-30T20:30:00\",\n  \"exitTime\": null,\n  \"amount\": null,\n  \"paymentStatus\": \"PENDING\"\n}"
+            },
+            {
+              "name": "400 Bad Request - Invalid Vehicle Number",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"timestamp\": \"2026-10-30T20:30:00\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Validation failed: Vehicle number must follow Indian registration format\"\n}"
+            },
+            {
+              "name": "409 Conflict - Slot Occupied",
+              "status": "Conflict",
+              "code": 409,
+              "body": "{\n  \"timestamp\": \"2026-10-30T20:30:00\",\n  \"status\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"Parking slot 'A-01' is already occupied. Please choose a different slot.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Active Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings", "active"]
+            },
+            "description": "Lists all vehicles currently in the parking lot with live duration and estimated fee."
+          },
+          "response": [
+            {
+              "name": "200 OK - Active Bookings",
+              "status": "OK",
+              "code": 200,
+              "body": "[\n  {\n    \"bookingId\": 1,\n    \"vehicleNumber\": \"MH31AB1234\",\n    \"slotNumber\": \"A-01\",\n    \"entryTime\": \"2026-10-30T20:00:00\",\n    \"parkingDuration\": \"0h 30m 0s\",\n    \"estimatedFee\": 50.00\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Checkout Vehicle",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Checkout successful', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "    var body = pm.response.json();",
+                  "    pm.test('Payment status is PAID', () => pm.expect(body.paymentStatus).to.eql('PAID'));",
+                  "    pm.test('Amount is set', () => pm.expect(body.totalAmount).to.be.above(0));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings", "{{bookingId}}", "checkout"]
+            },
+            "description": "Checks out a vehicle. Sets exit time, calculates fee, marks payment PAID, and releases the slot."
+          },
+          "response": [
+            {
+              "name": "200 OK - Checkout",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"bookingId\": 1,\n  \"vehicleNumber\": \"MH31AB1234\",\n  \"slotNumber\": \"A-01\",\n  \"entryTime\": \"2026-10-30T20:00:00\",\n  \"exitTime\": \"2026-10-30T20:45:00\",\n  \"totalDuration\": \"0h 45m 0s\",\n  \"totalAmount\": 50.00,\n  \"paymentStatus\": \"PAID\",\n  \"message\": \"Checkout successful. Slot A-01 is now available.\"\n}"
+            },
+            {
+              "name": "409 Already Checked Out",
+              "status": "Conflict",
+              "code": 409,
+              "body": "{\n  \"timestamp\": \"2026-10-30T21:00:00\",\n  \"status\": 409,\n  \"error\": \"Conflict\",\n  \"message\": \"Booking with ID 1 has already been checked out.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Live Fare Estimate",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/fare",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "bookings", "{{bookingId}}", "fare"]
+            },
+            "description": "Returns the current estimated parking fee for an active booking without checking out."
+          },
+          "response": [
+            {
+              "name": "200 OK - Fare Estimate",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"bookingId\": 1,\n  \"vehicleNumber\": \"MH31AB1234\",\n  \"slotNumber\": \"A-01\",\n  \"currentDuration\": \"2h 10m 30s\",\n  \"estimatedFare\": 50.00\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Get Daily Revenue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/analytics/revenue?date=2026-10-30",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "analytics", "revenue"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-10-30",
+                  "description": "ISO-8601 date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Returns total revenue for the specified date. Only includes PAID bookings."
+          },
+          "response": [
+            {
+              "name": "200 OK - Daily Revenue",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"date\": \"2026-10-30\",\n  \"totalRevenue\": 350.00,\n  \"currency\": \"INR\"\n}"
+            },
+            {
+              "name": "400 Bad Request - Invalid Date",
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"timestamp\": \"2026-10-30T21:00:00\",\n  \"status\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Invalid value '30-10-2026' for parameter 'date'.\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
